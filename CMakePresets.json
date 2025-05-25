@@ -1,0 +1,55 @@
+{
+  "version": 4,
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "debug-linux",
+      "hidden": true,
+      "inherits": "vcpkg",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_C_FLAGS": "-g -glldb -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-unused-command-line-argument -static-libgcc -static-libstdc++ -static-libgcc -static-libstdc++ -fuse-ld=lld -fPIC -fPIE -flto -fvisibility=hidden -fstack-protector-strong -fsanitize=undefined",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-g -glldb -std=gnu++20 -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-unused-command-line-argument -static-libgcc -static-libstdc++ -static-libgcc -static-libstdc++ -fuse-ld=lld -fPIC -fPIE -flto -fvisibility=hidden -fstack-protector-strong -fsanitize=undefined"
+      }
+    },
+    {
+      "name": "release-linux",
+      "hidden": true,
+      "inherits": "vcpkg",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_C_FLAGS": "-D_FORTIFY_SOURCE=3 -O3 -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-unused-command-line-argument -static-libgcc -static-libstdc++ -fuse-ld=lld -fPIC -fPIE -flto -fvisibility=hidden -fstack-protector-strong -fsanitize=undefined -Wl,--strip-all",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-D_FORTIFY_SOURCE=3 -O3 -std=gnu++20 -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-unused-command-line-argument -static-libgcc -static-libstdc++ -fuse-ld=lld -fPIC -fPIE -flto -fvisibility=hidden -fstack-protector-strong -fsanitize=undefined -Wl,--strip-all"
+      }
+    },
+    {
+      "name": "x64-linux-debug",
+      "displayName": "Debug for Linux-x64",
+      "inherits": "debug-linux",
+      "binaryDir": "${sourceDir}/x64_linux_cmake-debug",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "x64-linux-release",
+      "displayName": "Release for Linux-x64 (speed optimized)",
+      "inherits": "release-linux",
+      "binaryDir": "${sourceDir}/x64_linux_cmake-release",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    }
+  ]
+}
