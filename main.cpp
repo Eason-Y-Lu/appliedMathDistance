@@ -28,6 +28,7 @@ best_path find_best_path(const std::array<std::array<int, 10>, 10> adjMaterix, s
       if (adjMaterix[path[i]][path[i + 1]] == -1)
       {
         cost = std::numeric_limits<int>::max();
+        break;
       }
       else
       {
@@ -47,7 +48,7 @@ const std::array<std::array<int, 10>, 10> generate_adjacency_matrix()
   std::array<std::array<int, 10>, 10> adjMatrix;
   for (int i = 0; i < 10; ++i)
   {
-    for (int j = 0; j < 10; ++j)
+    for (int j = 0; j < i; ++j)
     {
       if (i == j)
       {
@@ -55,10 +56,17 @@ const std::array<std::array<int, 10>, 10> generate_adjacency_matrix()
       }
       else
       {
-        adjMatrix[i][j] = generate_random_int(-1, 255);
+        int distance = generate_random_int(-1, 255);
+        while (distance == 0)
+        {
+          distance = generate_random_int(-1, 255);
+        }
+        adjMatrix[i][j] = distance;
+        adjMatrix[j][i] = distance;
       }
     }
   }
+  adjMatrix[0][0] = 0;
   return adjMatrix;
 }
 const std::array<std::array<int, 10>, 10> shift_adjacency_matrix(const std::array<std::array<int, 10>, 10> &adjMatrix)
@@ -79,42 +87,92 @@ const std::array<std::array<int, 10>, 10> shift_adjacency_matrix(const std::arra
   }
   return shiftedMatrix;
 }
+int calculate_path_cost(const std::array<std::array<int, 10>, 10> &adjMatrix, const std::vector<int> &path)
+{
+  int cost = 0;
+  for (size_t i = 0; i < path.size() - 1; ++i)
+  {
+    if (adjMatrix[path[i]][path[i + 1]] == -1)
+    {
+      return std::numeric_limits<int>::max();
+    }
+    else
+    {
+      cost += adjMatrix[path[i]][path[i + 1]];
+    }
+  }
+  return cost;
+}
+// best_path find_alt_path(const std::array<std::array<int, 10>, 10> adjMatrix, std::vector<int> path){
+// Take in a previously found best path and find the next best path
+// Detect if the old path is still complete with no -1 values
+// If it is, return the old path
+// If not check where did the path fail
+// get all permutations of the path with 2 adjacent nodes swapped around the failed node
+
+//}
+
 int main()
 {
-  std::vector<int> path = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  std::array<std::array<int, 10>, 10> adjMatrix = generate_adjacency_matrix();
-  std::cout << "Adjacency Matrix:\n";
-  for (size_t i = 0; i < adjMatrix.size(); ++i)
+  oneapi::tbb::concurrent_vector<int> results;
+  oneapi::tbb::parallel_for(0, 10000, [&results](int i)
+                            {
+                              auto adjMatrix = generate_adjacency_matrix();
+                              std::vector<int> path = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+                              best_path bestPath = find_best_path(adjMatrix, path);
+                              auto shiftedMatrix = shift_adjacency_matrix(adjMatrix);
+                              best_path altPath = find_best_path(shiftedMatrix, bestPath.path);
+                              int old_path_on_shif_cost = calculate_path_cost(shiftedMatrix, bestPath.path);
+                              if (old_path_on_shif_cost == std::numeric_limits<int>::max())
+                              {
+                                results.push_back(std::numeric_limits<int>::max());
+                              }
+                              else if (altPath.cost == old_path_on_shif_cost)
+                              {
+                                results.push_back(0);
+                              }
+                              else
+                              {
+                                results.push_back(ceil(old_path_on_shif_cost / altPath.cost));
+                              } });
+  int old_path_still_best = 0;
+  int old_path_in_10 = 0;
+  int old_path_in_20 = 0;
+  int old_path_larger_than_20 = 0;
+  int old_path_not_valid = 0;
+  for (const auto &result : results)
   {
-    for (size_t j = 0; j < adjMatrix[i].size(); ++j)
+    if (result == 0)
     {
-      std::cout << adjMatrix[i][j] << " ";
+      old_path_still_best++;
     }
-    std::cout << "\n";
-  }
-  best_path bestPath = find_best_path(adjMatrix, path);
-  std::cout << "Best path: ";
-  for (size_t i = 0; i < bestPath.path.size(); ++i)
-  {
-    std::cout << bestPath.path[i] << " ";
-  }
-  std::cout << "\nCost: " << bestPath.cost << std::endl;
-  std::array<std::array<int, 10>, 10> shiftedMatrix = shift_adjacency_matrix(adjMatrix);
-  std::cout << "Shifted Adjacency Matrix:\n";
-  for (size_t i = 0; i < shiftedMatrix.size(); ++i)
-  {
-    for (size_t j = 0; j < shiftedMatrix[i].size(); ++j)
+    else if (result == std::numeric_limits<int>::max())
     {
-      std::cout << shiftedMatrix[i][j] << " ";
+      old_path_not_valid++;
     }
-    std::cout << "\n";
+    else if (result < 10)
+    {
+      old_path_in_10++;
+    }
+    else if (result < 20)
+    {
+      old_path_in_20++;
+    }
+    else
+    {
+      old_path_larger_than_20++;
+    }
   }
-  bestPath = find_best_path(shiftedMatrix, path);
-  std::cout << "Best path after shifting: ";
-  for (size_t i = 0; i < bestPath.path.size(); ++i)
-  {
-    std::cout << bestPath.path[i] << " ";
-  }
-  std::cout << "\nCost after shifting: " << bestPath.cost << std::endl;
+  std::cout << "Old path still best: " << old_path_still_best << "\n";
+  std::cout << "Old path not valid: " << old_path_not_valid << "\n";
+  std::cout << "Old path in 10: " << old_path_in_10 << "\n";
+  std::cout << "Old path in 20: " << old_path_in_20 << "\n";
+  std::cout << "Old path larger than 20: " << old_path_larger_than_20 << "\n";
+  std::cout << "Total: " << results.size() << "\n";
+  std::cout << "Percentage of old path still best: " << (static_cast<double>(old_path_still_best) / results.size()) * 100 << "%\n";
+  std::cout << "Percentage of old path not valid: " << (static_cast<double>(old_path_not_valid) / results.size()) * 100 << "%\n";
+  std::cout << "Percentage of old path in 10: " << (static_cast<double>(old_path_in_10) / results.size()) * 100 << "%\n";
+  std::cout << "Percentage of old path in 20: " << (static_cast<double>(old_path_in_20) / results.size()) * 100 << "%\n";
+  std::cout << "Percentage of old path larger than 20: " << (static_cast<double>(old_path_larger_than_20) / results.size()) * 100 << "%\n";
   return 0;
 }
